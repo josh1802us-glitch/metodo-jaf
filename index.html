@@ -524,14 +524,14 @@ function vEj(){
   if (e.grabar) h += '<a href="' + wa('Video de ' + e.nombre) + '" target="_blank" rel="noopener" class="ex" style="background:var(--ro);border-color:var(--ro);text-decoration:none"><div class="grow"><b style="font-size:14px">Graba tu última serie</b><div style="font-size:12px;opacity:.9">Tu coach quiere ver tu técnica · mándala por WhatsApp</div></div>›</a>';
   if (e.anot && !/^(BI|TRI)$/i.test(e.anot)) h += '<div class="card" style="font-size:13px;margin-bottom:10px"><b style="color:var(--am);font-size:11px;letter-spacing:1px">NOTA DE TU COACH</b><br>' + esc(e.anot) + '</div>';
   h += '<div style="text-align:right;margin:-4px 0 8px"><button onclick="descanso(descEj())" style="background:var(--az);color:#fff;border:1px solid #4a6a99;border-radius:16px;height:32px;padding:0 12px;font-weight:800;font-size:12px">⏱ DESCANSO ' + mmss(e.pausa || DESC) + '</button></div>';
-  h += '<div class="set" style="font-size:11px;font-weight:800;color:var(--gr);margin-bottom:6px"><span>SERIE</span><span style="text-align:center">REPS</span><span style="text-align:center">KG</span><span style="text-align:center">RPE</span></div>';
+  h += '<div class="set" style="font-size:11px;font-weight:800;color:var(--gr);margin-bottom:6px"><span>SERIE</span><span style="text-align:center">REPS</span><span style="text-align:center">KG / LBS</span><span style="text-align:center">RPE</span></div>';
   e.series.forEach(function(s, k){
     var cur = k === E.s, ok = !!s.hecho;
     var pend = !cur && (function(d){ return d && ((d.reps && (!ok || d.reps !== s.hecho.reps)) || (d.kg && (!ok || d.kg !== s.hecho.kg))); })(E.draft[E.i + '_' + k]);
     h += '<div class="set"><button class="sn ' + (ok ? 'ok' : (cur ? 'cur' : '')) + '" style="' + (pend ? 'border:2px dashed var(--am);color:var(--am)' : '') + '" onclick="cambiarSerie(' + k + ')">' + (ok ? '✓ ' : '') + s.n + '</button>';
     if (cur) {
       h += '<input id="reps" class="in" inputmode="decimal" enterkeyhint="next" onkeydown="if(event.key===\'Enter\'){event.preventDefault();$(\'kg\').focus()}" placeholder="' + esc(s.reps) + '" value="' + esc(vReps) + '">' +
-           '<input id="kg" class="in" inputmode="decimal" placeholder="' + esc(s.ant ? s.ant.kg : (s.kg || 'kg')) + '" value="' + esc(vKg) + '">';
+           '<input id="kg" class="in" inputmode="decimal" placeholder="' + esc(s.ant ? s.ant.kg : (s.kg || 'peso')) + '" value="' + esc(vKg) + '">';
     } else {
       // Lo escrito sin guardar se ve en amarillo; lo pautado (sin escribir) en gris; lo guardado en blanco
       var dr = E.draft[E.i + '_' + k] || {}, cR = celda(dr.reps, ok ? s.hecho.reps : null, s.reps), cK = celda(dr.kg, ok ? s.hecho.kg : null, '—');
@@ -541,8 +541,9 @@ function vEj(){
     var rr = ok ? parseInt(s.hecho.rpe, 10) : (cur ? E.rpe : parseInt(s.rpe, 10));
     h += '<span class="rp" style="background:' + ((RPE[rr] || {}).c || '#333') + ';color:' + (rr >= 9 ? '#fff' : '#000') + '">' + esc(rr || s.rpe) + '</span></div>';
     if (cur) h += '<div style="margin:-4px 0 8px 62px;font-size:13px;line-height:1.5"><span style="color:var(--am);font-weight:700">Pauta: ' + esc(s.reps || '—') + ' reps' + (String(s.kg || '').trim() ? ' · ' + esc(s.kg) + ' kg' : '') + ' · RPE ' + esc(s.rpe || '—') + '</span>' +
-      (s.ant ? '<br><span class="muted">Última vez: ' + esc(s.ant.reps) + ' reps × ' + esc(s.ant.kg) + ' kg</span>' : '') + '</div>';
+      (s.ant ? '<br><span class="muted">Última vez: ' + esc(s.ant.reps) + ' reps × ' + esc(s.ant.kg) + '</span>' : '') + '</div>';
   });
+  h += '<div class="muted" style="font-size:11px;margin:-2px 0 8px;text-align:center">Anota siempre en la misma unidad (kg o lbs)</div>';
   if (e.series.some(function(x, k){ var d = E.draft[E.i + '_' + k]; return k !== E.s && d && (d.reps || d.kg) && !x.hecho; })) h += '<div class="muted" style="font-size:11px;margin:-2px 0 8px"><span style="color:var(--am);font-weight:800">Amarillo</span> = escrito, falta tocar GUARDAR EJERCICIO</div>';
   if (se.int) {
     var n = parseInt((se.int.match(/\d+/) || [2])[0], 10); if (!(n > 0 && n <= 5)) n = 2;
@@ -630,7 +631,7 @@ function resumenDia(d){
   d.ejercicios.forEach(function(e){
     var hoy = 0, ant = 0;
     e.series.forEach(function(s){ if (s.hecho) hoy = Math.max(hoy, num(s.hecho.kg)); if (s.ant) ant = Math.max(ant, num(s.ant.kg)); });
-    if (ant && hoy > ant) mej.push(e.nombre.split(/ - | \(/)[0] + ' +' + String(Math.round((hoy - ant) * 10) / 10).replace('.', ',') + ' kg');
+    if (ant && hoy > ant) mej.push(e.nombre.split(/ - | \(/)[0] + ' +' + String(Math.round((hoy - ant) * 10) / 10).replace('.', ','));
   });
   if (!mej.length) return '💪 ¡Buen trabajo! Entreno guardado.';
   return '💪 ¡Buen trabajo! Subiste en ' + (mej.length > 2 ? mej.length + ' ejercicios: ' + mej.slice(0, 2).join(', ') + '…' : mej.join(', '));
