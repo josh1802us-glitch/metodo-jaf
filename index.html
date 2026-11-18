@@ -540,8 +540,6 @@ function vEj(){
     }
     var rr = ok ? parseInt(s.hecho.rpe, 10) : (cur ? E.rpe : parseInt(s.rpe, 10));
     h += '<span class="rp" style="background:' + ((RPE[rr] || {}).c || '#333') + ';color:' + (rr >= 9 ? '#fff' : '#000') + '">' + esc(rr || s.rpe) + '</span></div>';
-    if (cur) h += '<div style="margin:-4px 0 8px 62px;font-size:13px;line-height:1.5"><span style="color:var(--am);font-weight:700">Pauta: ' + esc(s.reps || '—') + ' reps' + (String(s.kg || '').trim() ? ' · ' + esc(s.kg) + ' kg' : '') + ' · RPE ' + esc(s.rpe || '—') + '</span>' +
-      (s.ant ? '<br><span class="muted">Última vez: ' + esc(s.ant.reps) + ' reps × ' + esc(s.ant.kg) + '</span>' : '') + '</div>';
   });
   h += '<div class="muted" style="font-size:11px;margin:-2px 0 8px;text-align:center">Anota siempre en la misma unidad (kg o lbs)</div>';
   if (e.series.some(function(x, k){ var d = E.draft[E.i + '_' + k]; return k !== E.s && d && (d.reps || d.kg) && !x.hecho; })) h += '<div class="muted" style="font-size:11px;margin:-2px 0 8px"><span style="color:var(--am);font-weight:800">Amarillo</span> = escrito, falta tocar GUARDAR EJERCICIO</div>';
