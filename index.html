@@ -89,6 +89,14 @@ body.contmr #app{padding-top:76px}
 var S = { token: null, d: null, tab: 'inicio', dia: null, sub: {}, view: null };
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+// La sesión se guarda dos veces (almacenamiento + cookie): si el teléfono borra uno, queda el otro
+function ck(k, v){ try { if (v === undefined) { var m = document.cookie.match(new RegExp('(?:^|; )jaf_' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; }
+  document.cookie = 'jaf_' + k + '=' + (v ? encodeURIComponent(v) : '') + ';path=/;max-age=' + (v ? 34560000 : 0) + ';SameSite=Lax' + (location.protocol === 'https:' ? ';Secure' : ''); } catch (e) { return null; } }
+function getTok(){ var t = ls('token') || ck('t'); if (t && !ls('token')) ls('token', t); return t; }
+function setTok(t){ ls('token', t); ck('t', t); if (t) try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {} }
+function standalone(){ try { return navigator.standalone || matchMedia('(display-mode: standalone)').matches; } catch (e) { return false; } }
+function enApp(){ return /Instagram|FBAN|FBAV|WhatsApp|Line\/|TikTok|musical_ly|Snapchat/i.test(navigator.userAgent || ''); }
+function esIOS(){ return /iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
 function ls(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem('jaf_' + k)); if (v === null) localStorage.removeItem('jaf_' + k); else localStorage.setItem('jaf_' + k, JSON.stringify(v)); } catch (e) { return null; } }
 // La app funciona igual desde el enlace de Google (google.script.run) o desde su enlace propio (fetch al mismo servidor).
 // Desde el enlace propio no se mandan las cuentas de Google del navegador, así no falla con varias cuentas abiertas.
@@ -177,7 +185,7 @@ document.addEventListener('visibilitychange', function(){
 /* ============ Arranque ============ */
 function init(){
   // La llave de sesión también vive en el enlace (?k=...): así el icono de la pantalla de inicio entra sin código
-  var usar = function(P){ P = P || {}; S.demo = P.demo || ''; if (P.k && !ls('token')) ls('token', P.k); arrancar(); };
+  var usar = function(P){ P = P || {}; S.demo = P.demo || ''; if (P.k && !getTok()) setTok(P.k); arrancar(); };
   if (!GAS) { var P = {}; try { new URLSearchParams(location.search).forEach(function(v, k){ P[k] = v; }); } catch (e) {} return usar(P); }
   try { google.script.url.getLocation(function(loc){ usar(loc && loc.parameter); }); }
   catch (e) { arrancar(); }
@@ -186,7 +194,8 @@ function fijarUrl(){ try { var q = S.token ? { k: S.token } : {}; if (S.token &&
   if (GAS) return google.script.history.replace(null, q);
   var s = new URLSearchParams(q).toString(); history.replaceState(null, '', location.pathname + (s ? '?' + s : '')); } catch (e) {} }
 function arrancar(){
-  S.token = ls('token');
+  S.token = getTok();
+  if (S.token && !ck('t')) ck('t', S.token);
   if (!S.token) return login();
   // Lo guardado en el teléfono se muestra mientras llega lo nuevo, salvo datos de prueba o de bienvenida (pueden ser viejos)
   var cache = S.demo ? null : ls('datos'); if (cache && !cache.demo && !cache.nuevo) { S.d = cache; render(); }
@@ -206,7 +215,7 @@ function cargar(){
   return api('cargar', S.token, S.demo || '').then(function(d){ aplicarPendientes(d); S.d = d; S.cargado = Date.now(); if (!d.demo) ls('datos', d); fijarUrl(); render(); flush(); })
     .catch(function(e){ if (String(e).indexOf('SESION') >= 0) return salir(); if (!S.d) $('app').innerHTML = '<div class="empty">No hay conexión. Vuelve a intentarlo.<br><br><button class="btn y" onclick="cargar()">REINTENTAR</button></div>'; });
 }
-function salir(){ ls('token', null); ls('datos', null); S.token = null; S.d = null; fijarUrl(); login(); }
+function salir(){ setTok(null); ls('datos', null); S.token = null; S.d = null; fijarUrl(); login(); }
 
 /* ============ Acceso ============ */
 function login(step, email){
@@ -221,9 +230,10 @@ function login(step, email){
       '<button class="btn y" style="margin-top:12px" onclick="verificar(\'' + esc(email) + '\')">ENTRAR</button>' +
       '<button class="btn d" style="margin-top:10px;height:46px;font-size:14px" onclick="login()">Usar otro correo</button>';
   } else {
-    h += '<input id="email" class="in" type="email" autocomplete="email" placeholder="Tu correo de Google" style="font-size:17px">' +
+    h += '<input id="email" class="in" type="email" autocomplete="email" placeholder="Tu correo de Google" style="font-size:17px" value="' + esc(ls('email') || ck('e') || '') + '">' +
       '<button class="btn y" style="margin-top:12px" onclick="pedirCodigo()">CONTINUAR</button>' +
-      '<p class="muted" style="margin:14px 0 0">Entra con el correo que diste a tu coach. Solo los asesorados del programa tienen acceso.</p>';
+      '<p class="muted" style="margin:14px 0 0">Entra con el correo que diste a tu coach. Solo los asesorados del programa tienen acceso.</p>' +
+      (enApp() ? '<div class="card" style="margin-top:14px;font-size:13px;line-height:1.5;text-align:left;border:1px solid var(--am)">⚠️ Estás dentro de otra app (WhatsApp, Instagram…). Ábrela en <b>' + (esIOS() ? 'Safari' : 'Chrome') + '</b> (menú ⋯ → “Abrir en el navegador”) para que no te vuelva a pedir el código.</div>' : '');
   }
   h += '<div style="height:60px"></div></div>';
   $('app').innerHTML = h;
@@ -231,13 +241,13 @@ function login(step, email){
 function pedirCodigo(){
   var e = $('email').value.trim(); if (!e) return;
   toast('Enviando código…');
-  api('solicitarCodigo', e).then(function(r){ toast(r.msg); if (r.ok) login('code', e.toLowerCase()); }).catch(function(){ toast('Sin conexión'); });
+  api('solicitarCodigo', e).then(function(r){ toast(r.msg); if (r.ok) { ls('email', e.toLowerCase()); ck('e', e.toLowerCase()); login('code', e.toLowerCase()); } }).catch(function(){ toast('Sin conexión'); });
 }
 function verificar(email){
   var c = $('code').value.trim();
   api('verificarCodigo', email, c).then(function(r){
     if (!r.ok) return toast(r.msg);
-    ls('token', r.token); S.token = r.token; $('app').innerHTML = '<div class="load"><b>JA</b><div class="spin"></div></div>'; cargar();
+    setTok(r.token); S.token = r.token; $('app').innerHTML = '<div class="load"><b>JA</b><div class="spin"></div></div>'; cargar();
   }).catch(function(){ toast('Sin conexión'); });
 }
 
@@ -273,10 +283,20 @@ function seg(key, opts){
 }
 
 /* ---------- Inicio ---------- */
+// Consejo para instalar la app en la pantalla de inicio: así no se pierde la sesión al cambiar de app
+function tipInstalar(){
+  if (GAS || standalone() || ls('tipOk') || S.d.demo) return '';
+  var pasos = enApp() ? 'Primero ábrela en <b>' + (esIOS() ? 'Safari' : 'Chrome') + '</b> (menú ⋯ → “Abrir en el navegador”). Luego ' : '';
+  pasos += esIOS() ? 'toca <b>Compartir</b> <span style="font-size:15px">⬆︎</span> y elige <b>“Agregar a inicio”</b>.' : 'toca el menú <b>⋮</b> y elige <b>“Agregar a pantalla de inicio”</b> o <b>“Instalar app”</b>.';
+  return '<div class="card" style="margin-top:12px;font-size:13px;line-height:1.5;border:1px solid var(--am);position:relative;padding-right:38px">' +
+    '<b style="color:var(--am)">📲 INSTALA LA APP</b><br>' + pasos + ' Entra siempre desde ese icono y no tendrás que volver a poner el código.' +
+    '<button aria-label="Cerrar" onclick="ls(\'tipOk\', 1); render()" style="position:absolute;top:8px;right:8px;background:none;border:0;color:var(--gr);font-size:20px">×</button></div>';
+}
 function vInicio(){
   var d = S.d, s = d.semana, h = '';
   h += '<div class="top"><div class="logo"><b>MÉTODO JAF</b></div><button class="ibtn" aria-label="Recursos" onclick="go(\'recursos\')">' + ICONS.book + '</button></div>';
   h += '<div class="pad">' + (d.demo ? '<div class="tag y" style="margin-bottom:10px">MODO PRUEBA · ASESORADO NUEVO</div>' : '') + '<h1 style="font-size:26px">HOLA, ' + esc((d.perfil.nombre || '').toUpperCase()) + '</h1>';
+  h += tipInstalar();
   if (s.vacia) return h + '<div class="empty">Tu coach está preparando tu plan.</div></div>';
   var hechos = s.dias.filter(function(x){ return x.hecho; }).length;
   h += '<div style="margin-top:14px;border-radius:24px;background:var(--am);color:#000;padding:16px 18px">' +
