@@ -617,7 +617,7 @@ function hecho(){
   var pend = function(j){ return d.ejercicios[j].series.some(function(z){ return !z.hecho; }); }, sig = -1, j;
   for (j = E.i + 1; j < d.ejercicios.length && sig < 0; j++) if (pend(j)) sig = j;
   for (j = 0; j < E.i && sig < 0; j++) if (pend(j)) sig = j;
-  if (sig < 0) { S.view = null; toast('✓ ¡Todos los ejercicios listos! Termina el entreno abajo'); render(); return arriba(); }
+  if (sig < 0) { saltar(); S.view = null; toast('✓ ¡Todos los ejercicios listos! Termina el entreno abajo'); render(); return arriba(); }
   toast('✓ ' + e.nombre + ' guardado · siguiente ejercicio');
   var pPrev = descEj(); abrirEj(E.dia, sig, true);
   descanso(pPrev);
@@ -654,7 +654,7 @@ function resumenDia(d){
   if (!mej.length) return '💪 ¡Buen trabajo! Entreno guardado.';
   return '💪 ¡Buen trabajo! Subiste en ' + (mej.length > 2 ? mej.length + ' ejercicios: ' + mej.slice(0, 2).join(', ') + '…' : mej.join(', '));
 }
-function abrirCierre(){ C = { v: 8 }; S.view = vCierre; render(); arriba(); }
+function abrirCierre(){ saltar(); C = { v: 8 }; S.view = vCierre; render(); arriba(); }
 function vCierre(){
   var d = diaActual(), ini = ls('ini_' + S.d.semana.hoja + '_' + d.n), min = ini ? Math.max(1, Math.round((Date.now() - ini) / 60000)) : '';
   var F = [['#C9E3FF','Muy suave',5,{}],['#FFDE59','Llevadera',4,{}],['#F7A23B','Dura',3,{}],['#E8552A','Muy dura','hard',{squint:true,sweat:true}],['#BC0F0C','Al límite','max',{squint:true,sweat:true}]][Math.ceil(C.v / 2) - 1];
@@ -668,6 +668,7 @@ function vCierre(){
   return h;
 }
 function cerrarDia(min){
+  saltar();
   var s = S.d.semana, d = diaActual();
   encolar({ tipo: 'cierre', hoja: s.hoja, semana: s.eval ? 'EVAL' : String(s.n), dia: d.n, filaDia: d.fila, esfuerzo: C.v, notas: $('notas').value.trim(), minutos: min });
   d.cerrado = d.hecho = true; d.esfuerzo = C.v;
